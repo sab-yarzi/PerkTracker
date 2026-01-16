@@ -7,7 +7,6 @@ class SingularPerk(BaseModel):
     expiry_text: Optional[str] = None
     conditions_text: Optional[str] = None
 
-    # Parsed fields (filled by your code, NOT the model)
     percentage_value: Optional[float] = None
     minimum_spend: Optional[float] = None
     money_back: Optional[float] = None
