@@ -39,6 +39,7 @@ def init_db():
                 money_back REAL,
                 cap_amount REAL,
                 confidence REAL,
+                source TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
@@ -49,6 +50,11 @@ def init_db():
         conn.execute("""
             CREATE INDEX IF NOT EXISTS idx_hash ON perks(hash)
         """)
+        # Migration: add source column if it doesn't exist
+        cursor = conn.execute("PRAGMA table_info(perks)")
+        columns = [row[1] for row in cursor.fetchall()]
+        if 'source' not in columns:
+            conn.execute("ALTER TABLE perks ADD COLUMN source TEXT")
 
 
 def save_perks(perk_list: PerkList) -> dict:
@@ -65,8 +71,8 @@ def save_perks(perk_list: PerkList) -> dict:
             try:
                 conn.execute("""
                              INSERT INTO perks (hash, company_name, offer_text, expiry_text, conditions_text,
-                                                percentage_value, minimum_spend, money_back, cap_amount, confidence)
-                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                                percentage_value, minimum_spend, money_back, cap_amount, confidence, source)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                              """, (
                                  perk_hash,
                                  perk.company_name,
@@ -77,7 +83,8 @@ def save_perks(perk_list: PerkList) -> dict:
                                  perk.minimum_spend,
                                  perk.money_back,
                                  perk.cap_amount,
-                                 perk.confidence
+                                 perk.confidence,
+                                 perk.source
                              ))
                 inserted += 1
             except sqlite3.IntegrityError:
@@ -91,6 +98,7 @@ def save_perks(perk_list: PerkList) -> dict:
                                  money_back       = ?,
                                  cap_amount       = ?,
                                  confidence       = ?,
+                                 source           = ?,
                                  updated_at       = CURRENT_TIMESTAMP
                              WHERE hash = ?
                              """, (
@@ -101,11 +109,19 @@ def save_perks(perk_list: PerkList) -> dict:
                                  perk.money_back,
                                  perk.cap_amount,
                                  perk.confidence,
+                                 perk.source,
                                  perk_hash
                              ))
                 skipped += 1
 
     return {'inserted': inserted, 'skipped': skipped}
+
+def get_perk_by_id(perk_id: int) -> dict | None:
+    """Retrieve a single perk by ID."""
+    with get_db_connection() as conn:
+        cursor = conn.execute("SELECT * FROM perks WHERE id = ?", (perk_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
 
 
 def get_all_perks() -> List[dict]:

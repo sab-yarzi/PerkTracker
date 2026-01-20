@@ -13,6 +13,7 @@ class SingularPerk(BaseModel):
     cap_amount: Optional[float] = None
 
     confidence: float
+    source: Optional[str] = None
 
 class PerkList(BaseModel):
     perks: List[SingularPerk]

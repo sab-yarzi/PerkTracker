@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perk Tracker</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎁 Perk Tracker</h1>
+            <div class="stats" id="stats"></div>
+        </header>
+
+        <div class="filters">
+            <input type="text" id="search" placeholder="Search company or offer...">
+            <select id="sortBy">
+                <option value="date">Sort by Date</option>
+                <option value="company">Sort by Company</option>
+                <option value="confidence">Sort by Confidence</option>
+            </select>
+        </div>
+
+        <div id="perks-container"></div>
+    </div>
+
+<script>
+    let allPerks = [];
+
+    async function loadStats() {
+        const response = await fetch('/api/stats');
+        const stats = await response.json();
+        document.getElementById('stats').innerHTML = `
+            <span>${stats.total_perks} perks</span>
+            <span>${stats.unique_companies} companies</span>
+        `;
+    }
+
+    async function loadPerks() {
+        const response = await fetch('/api/perks');
+        allPerks = await response.json();
+        renderPerks(allPerks);
+    }
+
+    function renderPerks(perks) {
+        const container = document.getElementById('perks-container');
+
+        if (perks.length === 0) {
+            container.innerHTML = '<div class="no-perks">No perks found</div>';
+            return;
+        }
+
+        container.innerHTML = perks.map(perk => `
+            <div class="perk-card">
+                <div class="perk-header">
+                    <h3>${perk.company_name}</h3>
+                    <span class="confidence" style="background: ${getConfidenceColor(perk.confidence)}">
+                        ${(perk.confidence * 100).toFixed(0)}%
+                    </span>
+                </div>
+                <div class="perk-offer">${perk.offer_text}</div>
+                ${perk.expiry_text ? `<div class="perk-expiry">⏰ ${perk.expiry_text}</div>` : ''}
+                ${perk.conditions_text ? `<div class="perk-conditions">📋 ${perk.conditions_text}</div>` : ''}
+                <div class="perk-details">
+                    ${perk.percentage_value ? `<span>💰 ${perk.percentage_value}%</span>` : ''}
+                    ${perk.minimum_spend ? `<span>Min: £${perk.minimum_spend}</span>` : ''}
+                    ${perk.money_back ? `<span>Cashback: £${perk.money_back}</span>` : ''}
+                    ${perk.cap_amount ? `<span>Cap: £${perk.cap_amount}</span>` : ''}
+                </div>
+                <div class="perk-footer">
+                    <small>Added: ${new Date(perk.created_at).toLocaleDateString()}</small>
+                    ${perk.source ? `<small>Source: ${perk.source}</small>` : ''}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function getConfidenceColor(confidence) {
+        if (confidence >= 0.8) return '#10b981';
+        if (confidence >= 0.6) return '#f59e0b';
+        return '#ef4444';
+    }
+
+    function filterPerks() {
+        const searchTerm = document.getElementById('search').value.toLowerCase();
+        const sortBy = document.getElementById('sortBy').value;
+
+        let filtered = allPerks.filter(perk =>
+            perk.company_name.toLowerCase().includes(searchTerm) ||
+            perk.offer_text.toLowerCase().includes(searchTerm)
+        );
+
+        if (sortBy === 'company') {
+            filtered.sort((a, b) => a.company_name.localeCompare(b.company_name));
+        } else if (sortBy === 'confidence') {
+            filtered.sort((a, b) => b.confidence - a.confidence);
+        } else {
+            filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        }
+
+        renderPerks(filtered);
+    }
+
+    document.getElementById('search').addEventListener('input', filterPerks);
+    document.getElementById('sortBy').addEventListener('change', filterPerks);
+
+    loadStats();
+    loadPerks();
+
+    setInterval(() => {
+        loadStats();
+        loadPerks();
+    }, 30000);
+</script>
+   
+</body>
+</html>

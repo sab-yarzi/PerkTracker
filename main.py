@@ -7,17 +7,20 @@ from service import process_screenshot
 SELECTED_MODEL = 'openbmb/minicpm-v4.5'
 DEFAULT_TEMPERATURE = 0
 CHOSEN_IMAGE = 'screenshots/amexTravel.png'
+PERK_SOURCE = 'AMEX'  # Source of the perks (e.g., 'Work Perks', 'Amex Offers', 'Chase Offers')
 
 
 def main():
 
     init_db()
     try:
-
-
         start = time.perf_counter()
         perk_list = process_screenshot(CHOSEN_IMAGE, SELECTED_MODEL, DEFAULT_TEMPERATURE)
         elapsed = time.perf_counter() - start
+
+        # Set source on all perks
+        for perk in perk_list.perks:
+            perk.source = PERK_SOURCE
 
         result = save_perks(perk_list)
         print(f"Saved: {result['inserted']} new, {result['skipped']} duplicates")
